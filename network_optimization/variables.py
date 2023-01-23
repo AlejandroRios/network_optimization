@@ -21,7 +21,8 @@ def configure_decision_variables(
         acft_variable_list_names: list of str
             List of acft variable names
     """
-
+    aircraft_info = inputs.list_excel_df[3].T.to_dict()
+    acft_number = len(aircraft_info)
     # Flow of passengers decision variables and their names 
     flow_variable_list = []
     flow_variable_list_names = []
@@ -40,14 +41,19 @@ def configure_decision_variables(
 
     for t in arcs:
         flow_var_name = 'flow_' + str(from_list[t]+1) + 'to' + str(to_list[t]+1)
-        acft_var_name = 'acft_' + str(from_list[t]+1) + 'to' + str(to_list[t]+1)
-
-        # Variabe bounds definition
-        flow_variable_list.append(solver.IntVar(0, infinity, flow_var_name))
-        acft_variable_list.append(solver.IntVar(0, max_allowed_acft, acft_var_name))
-        
+        flow_variable_list.append(solver.IntVar(0, infinity, flow_var_name)) # Variabe bounds definition
         flow_variable_list_names.append(flow_var_name)
-        acft_variable_list_names.append(acft_var_name)
+    
+
+    for k in range(acft_number):
+        aux1 = []
+        aux2 = []
+        for t in arcs:
+            acft_var_name = 'acft_'+str(k+1)+'_'+str(from_list[t]+1)+ 'to'+ str(to_list[t]+1)
+            aux1.append(solver.IntVar(0, max_allowed_acft, acft_var_name))
+            aux2.append(acft_var_name)
+        acft_variable_list.append(aux1)
+        acft_variable_list_names.append(aux2)
 
     return (
             flow_variable_list, 

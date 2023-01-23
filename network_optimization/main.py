@@ -79,7 +79,7 @@ def run(
 
 if __name__ == '__main__':
 
-    filename = 'Network_inputs_5airports.xlsx'
+    filename = 'Network_inputs_5airports_test.xlsx'
     startdate = 'stardate'
     startrun = time.time()
     run(filename, startdate)

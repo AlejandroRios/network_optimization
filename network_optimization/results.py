@@ -55,20 +55,32 @@ def print_results(
     else:
         print("Optimal solution found")
         print(('Problem solved in %f milliseconds' % solver.wall_time()))
-    
+
+        aircraft_info = inputs.list_excel_df[3].T.to_dict()
+        acft_number = len(aircraft_info)
+        total_flow = []
         for i in range(len(flow_variable_list)):
             if flow_variable_list[i].solution_value() != 0:
                 print(flow_variable_list_names[i] + ': {}'.format(flow_variable_list[i].solution_value()))
-        for i in range(len(acft_variable_list)):
-            if acft_variable_list[i].solution_value() != 0:
-                print(acft_variable_list_names[i] + ': {}'.format(acft_variable_list[i].solution_value()))
+                total_flow.append(flow_variable_list[i].solution_value())
+        
+        total_num_acft = []
+        for k in range(acft_number):
+            for i in range(len(acft_variable_list[k])):
+                if acft_variable_list[k][i].solution_value() != 0:
+                    print(acft_variable_list_names[k][i] + ': {}'.format(acft_variable_list[k][i].solution_value()))
+                    total_num_acft.append(acft_variable_list[k][i].solution_value())
+                    
     
         print('Objective value: {}'.format(solver.Objective().Value()))
+
+        print('Total flow of pax:', sum(total_flow))
+        print('Total num of acft:', sum(total_num_acft))
     
 
         # compute the results of previous objective functions
         result_constraints = compute_constraint_value(
-                constraint_list[0], flow_variable_list, acft_variable_list
+                constraint_list[0], flow_variable_list, acft_variable_list, inputs
                 )
         
         # postprocessing of results to obtain Profit and other parameters
@@ -80,8 +92,9 @@ def print_results(
             acft_variable_list, 
             acft_variable_list_names,
             )
-
-        plot_frequencies(inputs, total_acft_matrix)
+        
+        for k in range(acft_number):
+            plot_frequencies(inputs, total_acft_matrix[k])
 
         # df = results_to_csv(
         #         allocation, 

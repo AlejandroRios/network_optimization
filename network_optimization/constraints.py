@@ -46,14 +46,35 @@ def route_capacity_constraint(solver,
         constraint_list: list
             List of Constraint objects appended
     """ 
+
+    aircraft_info = inputs.list_excel_df[3].T.to_dict()
+    acft_number = len(aircraft_info)
+
     payload = inputs.list_inputs[5]
-    passenger_weight = int(inputs.list_excel_df[3]['passenger_weight'][0]) 
-    capacity = [int(x / passenger_weight) for x in payload]
-    for i in arcs:
-        constraint_list.append(solver.Add(flow_variable_list[i] <= acft_variable_list[i]*capacity[i]))# Capacity constraint
+    
+    capacity = []
+    for k in range(acft_number):
+        passenger_weight = int(inputs.list_excel_df[3]['passenger_weight'][k]) 
+        aux = [int(x / passenger_weight) for x in payload[k]]
+        capacity.append(aux)
+
+    aux1 = []
+    for k in range(acft_number):
+        aux2 = []
+        for i in range(len(arcs)):
+            aux2.append(acft_variable_list[k][i]*capacity[k][i])
+        aux1.append(aux2)
+    
+    capacity_constraint = [sum(j)  for j in zip(*aux1)]
+
+    for k in range(acft_number):
+        aux = []
+        for i in range(len(arcs)):
+            aux.append(solver.Add(flow_variable_list[i] <= capacity_constraint[i]))# Capacity constraint
+        constraint_list.append(aux)
 
     return constraint_list
-
+ 
 def flow_constraint(solver,
         flow_variable_list,
         arcs,

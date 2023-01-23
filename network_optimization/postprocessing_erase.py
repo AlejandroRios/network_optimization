@@ -66,7 +66,7 @@ def restructure_data(aux_mat,n):
                 new_mat[i][j] = aux_mat[i][j-1]
     return new_mat
 
-def passenger_load(list_acft, list_flow, airports_number, inputs):
+def passenger_load(list_flow, airports_number, inputs):
     """This function evaluate the aircraft load percentage and split it
     into a list with full loadaded and non-full loaded aircraft. It returns
     the distribution of loads in matrix a list form
@@ -79,154 +79,61 @@ def passenger_load(list_acft, list_flow, airports_number, inputs):
        full_acft_list: list of aircraft full loaded
        frac_acft_list: list of aircraft non-full loaded
     """
-    payload = inputs.list_inputs[5]
     aircraft_info = inputs.list_excel_df[3].T.to_dict()
     acft_number = len(aircraft_info)
+    payload = np.array(inputs.list_inputs[5])
+    passenger_weight = int(inputs.list_excel_df[3]['passenger_weight'][0]) 
 
+    print(payload)
+    print(passenger_weight)
+    # capacity = [int(x / passenger_weight) for x in payload[0]]
     capacity = []
-    for k in range(acft_number):
-        passenger_weight = int(inputs.list_excel_df[3]['passenger_weight'][k]) 
-        aux = [int(x / passenger_weight) for x in payload[k]]
+    for i in range(acft_number):
+        print(i)
+        aux = [int(x / passenger_weight) for x in payload[i]]
         capacity.append(aux)
-
-    acft_full_capacity = []
-
-    for k in range(acft_number):
-        aux2 = []
-        for i in range(len(list_flow)):
-            aux2.append(capacity[k][i]*list_acft[k][i])
-        acft_full_capacity.append(aux2)
-
-    initial_flow = list_flow
+    flow_matrix = list_to_matrix(list_flow,airports_number)
     
-    demand_evol = []
-
-    for k in reversed(range(acft_number)):
-        aux3 = []
-        for i in range(len(list_flow)):
-            if initial_flow[i] > 0:
-                new_flow = initial_flow[i]  - acft_full_capacity[k][i]
-            else:
-                if k == acft_number-1:
-                    new_flow = initial_flow[i] 
-                else:
-                    new_flow = 0
-            aux3.append(new_flow)
-        initial_flow = aux3
-        demand_evol.append(aux3)
-    demand_evol.insert(0,list_flow)
-    demand_evol = list(reversed(demand_evol))
-    demand_evol2 = demand_evol[1:]
-
-    total_acft_used = []
-    flow_fraction_full = []
-    flow_fraction_not_full = []
-    not_full_acft = []
-    not_full_flow = []
-    deactivated_acft = []
-
-    fracc_flights = []
-    full_flights = []
-    total_flow = []
-
-    full_flighs_flow = []
-    total_flow = []
-    not_full_flow_tot = []
-
-    total_acft_matrix = []
+    capacity_matrix = []
+    fraction = []
     full_acft_matrix = []
     frac_acft_matrix = []
+    full_acft_list = []
+    frac_acft_list = []
+
+    for i in range(acft_number):
+        
+        aux1 = list_to_matrix(capacity[i],airports_number)
+        capacity_matrix.append(aux1)
+
+        aux2 = np.nan_to_num(flow_matrix/aux1)
+        fraction.append(aux2)
+
+        aux3 = np.floor(aux2)
+        full_acft_matrix.append(aux3)
+        
+        aux4 = aux2-aux3
+        frac_acft_matrix.append(aux4)
+
+        aux5= matrix_to_list(aux3, airports_number)
+        full_acft_list.append(aux5)
+
+        aux6 = matrix_to_list(aux4, airports_number)
+        frac_acft_list.append(aux6)
+
+    total_acft_matrix = []
     for k in range(acft_number):
-        aux4 = []
-        aux5 = []
-        aux6 = []
-        aux7 = []
-        aux8 = []
-        aux9 = []
-        aux10 = []
-        aux11 = []
-        aux12 = []
-        aux13 = []
-        aux14 = []
-        for i in range(len(list_flow)):
-            if acft_full_capacity[k][i] > demand_evol2[k][i] and acft_full_capacity[k][i] > 0:
-                fraction = demand_evol2[k][i]/acft_full_capacity[k][i]
-            else:
-                fraction = 0
-            aux4.append(fraction)
-        
-        for i in range(len(list_flow)):
-            if aux4[i] > 0:
-                rem_acft = 1
-            else:
-                rem_acft = 0    
-            aux5.append(rem_acft) 
-        not_full_acft.append(aux5)
-        flow_fraction_full.append(aux4)
+        aux = np.zeros((airports_number,airports_number))
+        for i in range(airports_number):
+            for j in range(airports_number):
+                if frac_acft_matrix[k][i][j] > 0.5:
+                    aux[i][j] = 1
+                    
+        total_acft_matrix.append(full_acft_matrix[k]  + aux)
 
-        for i in range(len(list_flow)):
-            if not_full_acft[k][i] > 0:
-                aux6.append(not_full_acft[k][i]*capacity[k][i] + demand_evol[k][i])
-            else:
-                aux6.append(0)
-        not_full_flow.append(aux6)
-        
-        for i in range(len(list_flow)):
-            aux7.append(not_full_flow[k][i]/capacity[k][i])
-        flow_fraction_not_full.append(aux7)
+    return full_acft_matrix, frac_acft_matrix, total_acft_matrix, full_acft_list, frac_acft_list
 
-        for i in range(len(list_flow)):
-            if flow_fraction_not_full[k][i] == 0 or flow_fraction_not_full[k][i]> aircraft_info[k]['min_load_factor']:
-                aux8.append(0)
-            else:
-                aux8.append(1)
-        deactivated_acft.append(aux8)
-
-        for i in range(len(list_flow)):
-            if not_full_flow[k][i] > 0 and flow_fraction_not_full[k][i] > aircraft_info[k]['min_load_factor']:
-                aux9.append(1)
-            else:
-                aux9.append(0)
-
-        fracc_flights.append(aux9)
-
-        for i in range(len(list_flow)):
-            aux10.append(list_acft[k][i] - fracc_flights[k][i] - deactivated_acft[k][i])
-
-        full_flights.append(aux10) 
-
-        for i in range(len(list_flow)):
-            aux11.append(full_flights[k][i]*capacity[k][i])
-
-        full_flighs_flow.append(aux11)
-
-        for i in range(len(list_flow)):
-            if flow_fraction_not_full[k][i] > aircraft_info[k]['min_load_factor']:
-                aux12.append(flow_fraction_not_full[k][i]*capacity[k][i])
-            else:
-                aux12.append(0)
-
-        not_full_flow_tot.append(aux12)
-
-        for i in range(len(list_flow)):
-            aux13.append(full_flighs_flow[k][i]+not_full_flow_tot[k][i])
-
-        total_flow.append(aux13)
-
-        for i in range(len(list_flow)):
-            aux14.append(full_flights[k][i]+fracc_flights[k][i])
-        total_acft_used.append(aux14)
-
-
-        full_acft_matrix.append(list_to_matrix(full_flights[k],airports_number))
-        frac_acft_matrix.append(list_to_matrix(fracc_flights[k],airports_number))
-        total_acft_matrix.append(list_to_matrix(total_acft_used[k],airports_number))
-
-        # print(not_full_acft)
-
-    return not_full_acft, full_flights, not_full_flow_tot, full_flighs_flow, total_acft_matrix
-
-def revenue(full_flights, not_full_acft, inputs, airports_number):
+def revenue(full_acft_list, frac_acft_list, list_flow, inputs, airports_number):
     """This function computes the revenue from the network results
     :param full_acft_list: list of aircraft full loaded
     :param frac_acft_list: list of aircraft non-full loaded
@@ -237,27 +144,31 @@ def revenue(full_flights, not_full_acft, inputs, airports_number):
     :return
         revenue_total: total revenue of the network [US$]
     """
-
+    min_capacity = float(inputs.list_excel_df[3]['min_capacity_per'][0]) 
     avg_ticket_price = float(inputs.list_excel_df[3]['avg_ticket_price'][0]) 
+
+    payload = inputs.list_inputs[5]
+    passenger_weight = int(inputs.list_excel_df[3]['passenger_weight'][0]) 
+    capacity = [int(x / passenger_weight) for x in payload]
 
     distances_list = inputs.list_inputs[0]
     list_size = airports_number**2 - airports_number
 
     revenue_full_list = []
-    for i in range(len(full_flights)):
-        if full_flights[i] <= 0:
+    for i in range(len(full_acft_list)):
+        if (list_flow[i] <= 0 or full_acft_list[i] <= 0):
             revenue_full_list.append(0)
         else:
-            revenue_full_list.append(full_flights[i]*distances_list[i]*(full_flights[i]*avg_ticket_price)/(full_flights[i]*distances_list[i]))
+            revenue_full_list.append(capacity[i]*full_acft_list[i]*distances_list[i]*(capacity[i]*full_acft_list[i]*avg_ticket_price)/(capacity[i]*full_acft_list[i]*distances_list[i]))
 
     revenue_full_list = [0 if x != x else x for x in revenue_full_list]
 
     revenue_fracc_list = []
-    for i in range(len(not_full_acft)):
-        if not_full_acft[i] <= 0:
+    for i in range(len(frac_acft_list)):
+        if (list_flow[i] <= 0 or frac_acft_list[i] <= min_capacity):
             revenue_fracc_list.append(0)
         else:
-            revenue_fracc_list.append(not_full_acft[i]*distances_list[i]*(not_full_acft[i]*avg_ticket_price)/(not_full_acft[i]*distances_list[i]))
+            revenue_fracc_list.append(capacity[i]*frac_acft_list[i]*distances_list[i]*(capacity[i]*frac_acft_list[i]*avg_ticket_price)/(capacity[i]*frac_acft_list[i]*distances_list[i]))
     revenue_fracc_list = [0 if x != x else x for x in revenue_fracc_list]
 
     revenue_total_list = [x + y for x, y in zip(revenue_full_list,revenue_fracc_list)]
@@ -265,11 +176,12 @@ def revenue(full_flights, not_full_acft, inputs, airports_number):
 
     revenue_matrix = list_to_matrix(revenue_total_list,airports_number)
 
-    # print('Revenue matrix:', revenue_matrix)
+#     print('Revenue matrix:', revenue_matrix)
 
     return revenue_total
 
-def processed_doc(airports_number, aircraft_matrix, inputs,k):
+
+def processed_doc(airports_number, aircraft_matrix, inputs):
     """This function computes the DOC after consider the total
     used aircraft that presents the min. load requirement
     :param airports_number: number of airports whitin the network
@@ -279,9 +191,7 @@ def processed_doc(airports_number, aircraft_matrix, inputs,k):
     :return
         DOC_total: total DOC of the network [US$]
     """
-
-
-    doc = inputs.list_excel_df[2][k]
+    doc = inputs.list_excel_df[2]
     DOCmat =  np.zeros((airports_number,airports_number))
     for i in range(airports_number):
         for j in range(airports_number):
@@ -387,59 +297,43 @@ def postprocessing_results(
     """
 
     airports_number = len(inputs.list_excel_df[0])
-    
-    aircraft_info = inputs.list_excel_df[3].T.to_dict()
-    acft_number = len(aircraft_info)
-    print('==================================================================')
-    print('Pax. flow variable results:')
+
     list_flow = []
+    list_acft = []
+
     for i in range(len(flow_variable_list)):
         list_flow.append(flow_variable_list[i].solution_value())
-        print(flow_variable_list_names[i],flow_variable_list[i].solution_value())
+        # print(flow_variable_list[i].solution_value())
 
-    print('==================================================================')
+    for i in range(len(acft_variable_list)):
+        list_acft.append(acft_variable_list[i].solution_value())
 
-    print('Used acft. variable results:')
-    list_acft = []
-    aircraft_matrix = []
-    for k in range(acft_number):
-        aux = []
-        for i in range(len(acft_variable_list[k])):
-            print(acft_variable_list_names[k][i], acft_variable_list[k][i].solution_value())
-            aux.append(acft_variable_list[k][i].solution_value())
-        list_acft.append(aux)
+    aircraft_matrix = list_to_matrix(list_acft,airports_number)
+    full_acft_matrix, frac_acft_matrix, total_acft_matrix, full_acft_list, frac_acft_list = passenger_load(list_flow, airports_number, inputs)
 
-        aircraft_matrix.append(list_to_matrix(list_acft[k],airports_number))
-    print('==================================================================')
+    revenue_total = revenue(full_acft_list, frac_acft_list, list_flow, inputs, airports_number)
+
+    DOC_total = processed_doc(airports_number, total_acft_matrix, inputs)
+
+    print('Revenue:', revenue_total)
+    print('DOC total', DOC_total)
 
 
-    not_full_acft, full_flights, not_full_flow_tot, full_flighs_flow, total_acft_matrix = passenger_load(list_acft, list_flow, airports_number, inputs)
-    
-    revenue_total = []
-    DOC_total = []
-    for k in range(acft_number):
-        revenue_acft = revenue(full_flighs_flow[k], not_full_flow_tot[k], inputs, airports_number)
-        revenue_total.append(revenue_acft)
+    profit = int(1.0*revenue_total - 1.2*DOC_total)
 
-
-        DOC_acft = processed_doc(airports_number, total_acft_matrix[k], inputs,k)
-        DOC_total.append(DOC_acft)
-
-    print('Revenue:', sum(revenue_total))
-    print('DOC total', sum(DOC_total))
-
-
-    profit = int(1.0*sum(revenue_total) - 1.2*sum(DOC_total))
     print('Profit:', profit)
-    print('Margin: ',profit/sum(revenue_total))
-    print('==================================================================')
-    net_parameters = []
-    for k in range(acft_number):
-        net_par_acft = network_parameters(total_acft_matrix[k],
+    print('Margin: ',profit/revenue_total)
+
+    net_parameters = network_parameters(total_acft_matrix,
                 airports_number,
                 inputs)
-        net_parameters.append(net_par_acft)
 
-    print('==================================================================')
+
 
     return revenue_total, DOC_total, profit, net_parameters, total_acft_matrix
+
+
+
+
+
+

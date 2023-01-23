@@ -13,13 +13,24 @@ def configure_objective(
     :return
         objective: solver.Objective object
     """
+    aircraft_info = inputs.list_excel_df[3].T.to_dict()
+    acft_number = len(aircraft_info)
+
     from_list = inputs.list_inputs[3]
     docs_list = inputs.list_inputs[2]
     arcs = list(range(len(from_list)))
+    
+    docs_lists = []
+    for i in range(acft_number):
+        docs_lists.extend(inputs.list_inputs[2][i])
+
+
+    acft_variable_list =  [item for sublist in acft_variable_list for item in sublist]
+
 
     objective = solver.Objective()
     direction = 'minimization'
-    objective = solver.Minimize(sum([acft_variable_list[i]*docs_list[i] for i in range(len(arcs))]))
+    objective = solver.Minimize(sum([acft_variable_list[i]*docs_lists[i] for i in range(len(docs_lists))]))
 
 
     return objective

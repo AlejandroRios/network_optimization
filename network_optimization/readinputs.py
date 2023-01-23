@@ -40,9 +40,16 @@ class InputData:
                 )
         df_demands = (df_demands_total*market_share).astype(int)
 
-        df_DOCs = pd.read_excel(self.path, sheet_name='DOCs', index_col=None, header=None)
-
         df_acft = pd.read_excel(self.path, sheet_name='Aircraft')
+
+        acft_number = len(df_acft.index)
+
+        df_DOCs = []
+
+        for i in range(acft_number):
+            i = i+1
+            aux = pd.read_excel(self.path, sheet_name='DOC_'+str(i), index_col=None, header=None)
+            df_DOCs.append(aux)
 
         list_dataframes = [df_distances, df_demands, df_DOCs, df_acft]
 
@@ -61,6 +68,8 @@ class InputData:
         airports_number = len(self.list_excel_df[0])
 
         aircraft_info = self.list_excel_df[3].T.to_dict()
+
+        acft_number = len(aircraft_info)
 
         print('Airports number:', airports_number)
 
@@ -85,22 +94,27 @@ class InputData:
                 if i != j and i > j:
                     demand_list.append(dictionary_demands[i][j])
 
-        dictionary_docs = self.list_excel_df[2].T.to_dict()
+        # dictionary_docs = self.list_excel_df[2].T.to_dict()
         docs_list = []
-        for i in range(airports_number): 
-            for j in range(airports_number):
-                if i != j and i < j:
-                    if (dictionary_docs[i][j] > 10000000) or (dictionary_demands[i][j]==0):
-                        docs_list.append(1000000)
-                    else:
-                        docs_list.append(dictionary_docs[i][j])
-        for i in range(airports_number): 
-            for j in range(airports_number):
-                if i != j and i > j:
-                    if (dictionary_docs[i][j] > 10000000) or (dictionary_demands[i][j]==0):
-                        docs_list.append(1000000)
-                    else:
-                        docs_list.append(dictionary_docs[i][j])
+        for k in range(acft_number):
+            doc_lst = []
+            dictionary_docs = self.list_excel_df[2][k].T.to_dict()
+            for i in range(airports_number): 
+                for j in range(airports_number):
+                    if i != j and i < j:
+                        if (dictionary_docs[i][j] > 10000000) or (dictionary_demands[i][j]==0):
+                            doc_lst.append(1000000)
+                        else:
+                            doc_lst.append(dictionary_docs[i][j])
+            for i in range(airports_number): 
+                for j in range(airports_number):
+                    if i != j and i > j:
+                        if (dictionary_docs[i][j] > 10000000) or (dictionary_demands[i][j]==0):
+                            doc_lst.append(1000000)
+                        else:
+                            doc_lst.append(dictionary_docs[i][j])
+            
+            docs_list.append(doc_lst)
 
         froms_list = []
         for i in range(airports_number): 
@@ -124,14 +138,15 @@ class InputData:
 
         payloads_list = []
 
-        ranges = pd.eval(aircraft_info[0]['ranges'])
-        payload = pd.eval(aircraft_info[0]['payloads'])
+        for k in range(acft_number):
+            ranges = pd.eval(aircraft_info[k]['ranges'])
+            payload = pd.eval(aircraft_info[k]['payloads'])
+            points =  [(ranges[0],payload[0]),(ranges[1],payload[1]),(ranges[2],payload[2]),(ranges[3],payload[3])]
+            payload = [payloadrange_diagram(points,x) for x in distances_list]
 
-        points =  [(ranges[0],payload[0]),(ranges[1],payload[1]),(ranges[2],payload[2]),(ranges[3],payload[3])]
-
-        payload = [payloadrange_diagram(points,x) for x in distances_list]
+            payloads_list.append(payload)
         
-        list_inputs = [distances_list, demand_list, docs_list, froms_list, tos_list,payload]
+        list_inputs = [distances_list, demand_list, docs_list, froms_list, tos_list,payloads_list]
 
 
 
