@@ -1,3 +1,4 @@
+import argparse
 from readinputs import InputData
 from variables import configure_decision_variables
 from constraints import configure_constraints
@@ -6,6 +7,7 @@ from results import print_results
 from ortools.linear_solver import pywraplp
 import time
 import re
+import datetime as dt
 
 def run(
         filename,
@@ -77,11 +79,37 @@ def run(
 
 
 
-if __name__ == '__main__':
+# if __name__ == '__main__':
 
-    filename = 'Network_inputs_5airports_test.xlsx'
-    startdate = 'stardate'
+#     filename = 'Network_inputs_5airports_test.xlsx'
+#     startdate = 'stardate'
+#     startrun = time.time()
+#     run(filename, startdate)
+#     print(time.time()- startrun)
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--filename", "-f", help="Input constraint filename")
+    parser.add_argument(
+            "--startdate",
+            "-d", help="Date for starting simulation. Format: %d/%m/%Y %H:%M"
+            )
+    
+    # Read arguments from command line
+    args = parser.parse_args()
+
+    if args.filename:
+        filename = args.filename
+    else:
+        raise ValueError('Provide the inputs filename')
+    
+    if args.startdate:
+        startdate = args.startdate
+        startdate = dt.datetime.strptime(startdate,  '%d/%m/%Y %H:%M')
+    else:
+        raise ValueError('Provide the constraints filename')
+    
     startrun = time.time()
     run(filename, startdate)
     print(time.time()- startrun)
-    

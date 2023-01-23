@@ -82,25 +82,27 @@ def passenger_load(list_acft, list_flow, airports_number, inputs):
     payload = inputs.list_inputs[5]
     aircraft_info = inputs.list_excel_df[3].T.to_dict()
     acft_number = len(aircraft_info)
-
+    
+    # Pax capacity according to leg distance
     capacity = []
     for k in range(acft_number):
         passenger_weight = int(inputs.list_excel_df[3]['passenger_weight'][k]) 
         aux = [int(x / passenger_weight) for x in payload[k]]
         capacity.append(aux)
-
+    
+    # Calculates pax flow considering max load factor
     acft_full_capacity = []
-
     for k in range(acft_number):
         aux2 = []
         for i in range(len(list_flow)):
             aux2.append(capacity[k][i]*list_acft[k][i])
         acft_full_capacity.append(aux2)
-
-    initial_flow = list_flow
     
-    demand_evol = []
 
+    # Calculates the flow distribution for each leg
+    # This follows a fill order where the bigger acft is filled first
+    initial_flow = list_flow
+    demand_evol = []
     for k in reversed(range(acft_number)):
         aux3 = []
         for i in range(len(list_flow)):
@@ -114,119 +116,122 @@ def passenger_load(list_acft, list_flow, airports_number, inputs):
             aux3.append(new_flow)
         initial_flow = aux3
         demand_evol.append(aux3)
+    
+    # Add initial flow list and reverse the order (smaller to bigger acft)
     demand_evol.insert(0,list_flow)
     demand_evol = list(reversed(demand_evol))
+
     demand_evol2 = demand_evol[1:]
 
     total_acft_used = []
     flow_fraction_full = []
-    flow_fraction_not_full = []
-    not_full_acft = []
-    not_full_flow = []
+    flow_fraction_incomplete = []
+    incomplete_acft = []
+    incomplete_flow = []
     deactivated_acft = []
 
-    fracc_flights = []
+    incomplete_flights = []
     full_flights = []
     total_flow = []
 
     full_flighs_flow = []
     total_flow = []
-    not_full_flow_tot = []
+    incomplete_flow_tot = []
 
     total_acft_matrix = []
     full_acft_matrix = []
-    frac_acft_matrix = []
+    incomplete_acft_matrix = []
     for k in range(acft_number):
+        # Several list are created to store intermediate information related to the calculation
+        # of total flow and aircraft used considering the min. load factor of each acft.
+        # Acft that dont meet the min. load factor are deactivated.
         aux4 = []
         aux5 = []
-        aux6 = []
-        aux7 = []
-        aux8 = []
-        aux9 = []
-        aux10 = []
-        aux11 = []
-        aux12 = []
-        aux13 = []
-        aux14 = []
         for i in range(len(list_flow)):
             if acft_full_capacity[k][i] > demand_evol2[k][i] and acft_full_capacity[k][i] > 0:
-                fraction = demand_evol2[k][i]/acft_full_capacity[k][i]
+                aux4.append(demand_evol2[k][i]/acft_full_capacity[k][i])
             else:
-                fraction = 0
-            aux4.append(fraction)
+                aux4.append(0)
         
         for i in range(len(list_flow)):
             if aux4[i] > 0:
-                rem_acft = 1
+                aux5.append(1)
             else:
-                rem_acft = 0    
-            aux5.append(rem_acft) 
-        not_full_acft.append(aux5)
+                aux5.append(0)    
+
+        incomplete_acft.append(aux5)
         flow_fraction_full.append(aux4)
 
+        aux6 = []
+        aux7 = []
         for i in range(len(list_flow)):
-            if not_full_acft[k][i] > 0:
-                aux6.append(not_full_acft[k][i]*capacity[k][i] + demand_evol[k][i])
+            if incomplete_acft[k][i] > 0:
+                aux6.append(incomplete_acft[k][i]*capacity[k][i] + demand_evol[k][i])
             else:
                 aux6.append(0)
-        not_full_flow.append(aux6)
+        incomplete_flow.append(aux6)
         
         for i in range(len(list_flow)):
-            aux7.append(not_full_flow[k][i]/capacity[k][i])
-        flow_fraction_not_full.append(aux7)
+            aux7.append(incomplete_flow[k][i]/capacity[k][i])
+        flow_fraction_incomplete.append(aux7)
 
+        aux8 = []
         for i in range(len(list_flow)):
-            if flow_fraction_not_full[k][i] == 0 or flow_fraction_not_full[k][i]> aircraft_info[k]['min_load_factor']:
+            if flow_fraction_incomplete[k][i] == 0 or flow_fraction_incomplete[k][i]> aircraft_info[k]['min_load_factor']:
                 aux8.append(0)
             else:
                 aux8.append(1)
         deactivated_acft.append(aux8)
 
+        aux9 = []
+        aux10 = []
         for i in range(len(list_flow)):
-            if not_full_flow[k][i] > 0 and flow_fraction_not_full[k][i] > aircraft_info[k]['min_load_factor']:
+            if incomplete_flow[k][i] > 0 and flow_fraction_incomplete[k][i] > aircraft_info[k]['min_load_factor']:
                 aux9.append(1)
             else:
                 aux9.append(0)
 
-        fracc_flights.append(aux9)
+        incomplete_flights.append(aux9)
 
         for i in range(len(list_flow)):
-            aux10.append(list_acft[k][i] - fracc_flights[k][i] - deactivated_acft[k][i])
+            aux10.append(list_acft[k][i] - incomplete_flights[k][i] - deactivated_acft[k][i])
 
         full_flights.append(aux10) 
 
+        aux11 = []
+        aux12 = []
         for i in range(len(list_flow)):
             aux11.append(full_flights[k][i]*capacity[k][i])
 
         full_flighs_flow.append(aux11)
 
         for i in range(len(list_flow)):
-            if flow_fraction_not_full[k][i] > aircraft_info[k]['min_load_factor']:
-                aux12.append(flow_fraction_not_full[k][i]*capacity[k][i])
+            if flow_fraction_incomplete[k][i] > aircraft_info[k]['min_load_factor']:
+                aux12.append(flow_fraction_incomplete[k][i]*capacity[k][i])
             else:
                 aux12.append(0)
 
-        not_full_flow_tot.append(aux12)
+        incomplete_flow_tot.append(aux12)
 
+        aux13 = []
+        aux14 = []
         for i in range(len(list_flow)):
-            aux13.append(full_flighs_flow[k][i]+not_full_flow_tot[k][i])
+            aux13.append(full_flighs_flow[k][i]+incomplete_flow_tot[k][i])
 
         total_flow.append(aux13)
 
         for i in range(len(list_flow)):
-            aux14.append(full_flights[k][i]+fracc_flights[k][i])
+            aux14.append(full_flights[k][i]+incomplete_flights[k][i])
         total_acft_used.append(aux14)
-
-
+        
+        # Converting relevant parameters from list to matrix form
         full_acft_matrix.append(list_to_matrix(full_flights[k],airports_number))
-        frac_acft_matrix.append(list_to_matrix(fracc_flights[k],airports_number))
+        incomplete_acft_matrix.append(list_to_matrix(incomplete_flights[k],airports_number))
         total_acft_matrix.append(list_to_matrix(total_acft_used[k],airports_number))
 
-        # print(not_full_acft)
+    return incomplete_acft, full_flights, incomplete_flow_tot, full_flighs_flow, total_acft_matrix
 
-    return not_full_acft, full_flights, not_full_flow_tot, full_flighs_flow, total_acft_matrix
-
-def revenue(full_flights, not_full_acft, inputs, airports_number):
+def revenue(full_flights, incomplete_acft, inputs, airports_number):
     """This function computes the revenue from the network results
     :param full_acft_list: list of aircraft full loaded
     :param frac_acft_list: list of aircraft non-full loaded
@@ -253,11 +258,11 @@ def revenue(full_flights, not_full_acft, inputs, airports_number):
     revenue_full_list = [0 if x != x else x for x in revenue_full_list]
 
     revenue_fracc_list = []
-    for i in range(len(not_full_acft)):
-        if not_full_acft[i] <= 0:
+    for i in range(len(incomplete_acft)):
+        if incomplete_acft[i] <= 0:
             revenue_fracc_list.append(0)
         else:
-            revenue_fracc_list.append(not_full_acft[i]*distances_list[i]*(not_full_acft[i]*avg_ticket_price)/(not_full_acft[i]*distances_list[i]))
+            revenue_fracc_list.append(incomplete_acft[i]*distances_list[i]*(incomplete_acft[i]*avg_ticket_price)/(incomplete_acft[i]*distances_list[i]))
     revenue_fracc_list = [0 if x != x else x for x in revenue_fracc_list]
 
     revenue_total_list = [x + y for x, y in zip(revenue_full_list,revenue_fracc_list)]
@@ -413,12 +418,12 @@ def postprocessing_results(
     print('==================================================================')
 
 
-    not_full_acft, full_flights, not_full_flow_tot, full_flighs_flow, total_acft_matrix = passenger_load(list_acft, list_flow, airports_number, inputs)
+    incomplete_acft, full_flights, incomplete_flow_tot, full_flighs_flow, total_acft_matrix = passenger_load(list_acft, list_flow, airports_number, inputs)
     
     revenue_total = []
     DOC_total = []
     for k in range(acft_number):
-        revenue_acft = revenue(full_flighs_flow[k], not_full_flow_tot[k], inputs, airports_number)
+        revenue_acft = revenue(full_flighs_flow[k], incomplete_flow_tot[k], inputs, airports_number)
         revenue_total.append(revenue_acft)
 
 

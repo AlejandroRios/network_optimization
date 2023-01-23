@@ -13,7 +13,6 @@ def plot_frequencies(inputs, aircraft_matrix):
     fig, ax1 = plt.subplots()
     im = ax1.imshow(aircraft_matrix)
     im.set_clim(0, 10)
-    print(im)
     fig.colorbar(im,orientation="vertical", pad=0.2)
     # We want to show all ticks...
     # ax1.set_xticks(np.arange(len(arrival_airports)))
